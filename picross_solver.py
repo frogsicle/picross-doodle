@@ -1,5 +1,6 @@
 import getopt
 import sys
+import os.path
 
 def usage():
     usagestr = """ python picros_solver.py -p path/to/rules [options]
@@ -60,9 +61,6 @@ def min_rule(rule):
     out.pop()  # remove last '0' because it's no longer in between
     return out
 
-def place_final(size, space):
-    out = []
-
 
 def get_min_length(rule):
     y = 0
@@ -90,6 +88,8 @@ class Board():
             self.rows.append(Row(rule=rule, n=len(col_rules)))
         self.row_constraints = []
         self.col_constraints = []
+        if os.path.isfile(board_path + '/seeds.txt'):
+            self.add_seed(board_path + '/seeds.txt')
 
     def __str__(self):
         col_space = max([len(x.rule) for x in self.columns])
@@ -155,13 +155,37 @@ class Board():
         self.drop_invalid_by_row()
         self.drop_invalid_by_column()
 
+    def add_seed(self, seed_file):
+        # read in and clean seeds from file
+        seed_rows = open(seed_file).readlines()
+        clean_seed_rows = []
+        for line in seed_rows:
+            clean_line = line.rstrip()
+            clean_line = list(clean_line)
+            for i in range(len(clean_line)):
+                try:
+                    clean_line[i] = int(clean_line[i])
+                except ValueError:
+                    clean_line[i] = '?'
+            clean_seed_rows.append(clean_line)
+        seed_rows = clean_seed_rows
+        # transpose for columns
+        seed_cols = []
+        for i in range(len(seed_rows[0])):
+            new_seed_col = [x[i] for x in seed_rows]
+            seed_cols.append(new_seed_col)
+        # constrain possibilities based on seeds
+        self.row_constraints = seed_rows
+        self.col_constraints = seed_cols
+        self.drop_invalid()
+        self.row_constraints = self.col_constraints = [] # reset, just in case it's used elsewhere
+
     def is_finished(self):
         n_arrangements_remaining = [len(x.potentials) for x in self.rows + self.columns]
         out = False
         if max(n_arrangements_remaining) == 1:
             out = True
         return out
-
 
 
 class BlockSet():
